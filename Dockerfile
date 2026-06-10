@@ -6,4 +6,4 @@ COPY src/*.java .
 
 RUN javac *.java
 
-CMD ["java", "Main"]
+CMD ["java","-cp","target/classes","Main"]

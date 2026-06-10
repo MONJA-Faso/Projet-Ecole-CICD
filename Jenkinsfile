@@ -1,17 +1,54 @@
 pipeline {
     agent any
 
-    stages {
+    tools {
+        maven 'Maven3'
+    }
 
-        stage('Compile') {
+    environment {
+        SONAR_TOKEN = credentials('sonar-token')
+        NEXUS_CREDS = credentials('nexus-creds')
+    }
+
+    stages {
+        stage('clone and clean repo') {
             steps {
-                sh 'javac src/*.java'
+                sh 'rm -rf demoic || true'
+                sh 'git clone https://gitlab.com/ThourayaLouati/demoic || git clone https://github.com/jglick/simple-maven-project-with-tests.git demoic'
+                sh 'mvn clean -f demoic'
             }
         }
-
-        stage('Execute') {
+        
+        stage('Test') {
             steps {
-                sh 'java -cp src Main'
+                sh 'mvn test -f demoic -Dmaven.test.failure.ignore=true'
+            }
+        }
+        
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh 'mvn sonar:sonar -f demoic'
+                }
+            }
+        }
+        
+        stage('Deploy to Nexus') {
+            steps {
+                sh '''
+                    cat <<EOF > settings.xml
+                    <settings>
+                      <servers>
+                        <server>
+                          <id>nexus</id>
+                          <username>${NEXUS_CREDS_USR}</username>
+                          <password>${NEXUS_CREDS_PSW}</password>
+                        </server>
+                      </servers>
+                    </settings>
+                    EOF
+                '''
+                sh 'mvn deploy -s settings.xml -f demoic -DskipTests'
             }
         }
     }
