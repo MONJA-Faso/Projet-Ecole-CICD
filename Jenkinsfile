@@ -11,24 +11,29 @@ pipeline {
     }
 
     stages {
-        stage('clone and clean repo') {
+        stage('Checkout') {
             steps {
-                sh 'rm -rf demoic || true'
-                sh 'git clone https://gitlab.com/ThourayaLouati/demoic || git clone https://github.com/jglick/simple-maven-project-with-tests.git demoic'
-                sh 'mvn clean -f demoic'
+                // Récupère le code depuis le dépôt Git configuré dans Jenkins
+                checkout scm
             }
         }
         
-        stage('Test') {
+        stage('Build & Compile') {
             steps {
-                sh 'mvn test -f demoic -Dmaven.test.failure.ignore=true'
+                sh 'mvn clean compile'
+            }
+        }
+        
+        stage('Unit Tests') {
+            steps {
+                sh 'mvn test -Dmaven.test.failure.ignore=true'
             }
         }
         
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    sh 'mvn sonar:sonar -f demoic'
+                    sh 'mvn sonar:sonar'
                 }
             }
         }
@@ -48,7 +53,7 @@ pipeline {
                     </settings>
                     EOF
                 '''
-                sh 'mvn deploy -s settings.xml -f demoic -DskipTests'
+                sh 'mvn deploy -s settings.xml -DskipTests'
             }
         }
     }
