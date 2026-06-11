@@ -13,7 +13,6 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // Récupère le code depuis le dépôt Git configuré dans Jenkins
                 checkout scm
             }
         }
@@ -40,20 +39,12 @@ pipeline {
         
         stage('Deploy to Nexus') {
             steps {
-                sh '''
-                    cat <<EOF > settings.xml
-                    <settings>
-                      <servers>
-                        <server>
-                          <id>nexus</id>
-                          <username>${NEXUS_CREDS_USR}</username>
-                          <password>${NEXUS_CREDS_PSW}</password>
-                        </server>
-                      </servers>
-                    </settings>
-                    EOF
-                '''
-                sh 'mvn deploy -s settings.xml -DskipTests'
+                withCredentials([usernamePassword(credentialsId: 'nexus-creds', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
+                    sh """
+                        echo '<settings><servers><server><id>nexus</id><username>${NEXUS_USER}</username><password>${NEXUS_PASS}</password></server></servers></settings>' > settings.xml
+                    """
+                    sh 'mvn deploy -s settings.xml -DskipTests'
+                }
             }
         }
     }
